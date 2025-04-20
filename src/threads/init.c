@@ -22,6 +22,7 @@
 #include "threads/palloc.h"
 #include "threads/pte.h"
 #include "threads/thread.h"
+#include "lib/ctype.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #include "userprog/exception.h"
@@ -134,13 +135,40 @@ pintos_init (void)
     run_actions (argv);
   } else {
     // TODO: no command line passed to kernel. Run interactively 
+    {
+      const size_t buf_size = 128;
+      char buf[buf_size];
+      size_t pos = 0;
+      printf ("PKUOS> ");
+      for (;;) {
+        uint8_t c = input_getc ();
+        if (isprint (c)) {
+          putchar (c);
+          if (pos < buf_size - 1)
+            buf[pos++] = c;
+        } else if (c == '\r' || c == '\n') {
+          putchar ('\n');
+          buf[pos] = '\0';
+          if (!strcmp (buf, "exit")) {
+            printf ("Shutting down...\n");
+            shutdown_power_off();
+          }
+          else if (!strcmp (buf, "whoami"))
+            printf ("12345678\n");
+          else if (pos > 0)
+            printf ("invalid command\n");
+          pos = 0;
+          printf ("PKUOS> ");
+        }
+      }
+    }
   }
 
   /* Finish up. */
   shutdown ();
   thread_exit ();
 }
-
+
 /** Clear the "BSS", a segment that should be initialized to
    zeros.  It isn't actually stored on disk or zeroed by the
    kernel loader, so we have to zero it ourselves.
