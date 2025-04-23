@@ -99,6 +99,7 @@ struct thread
 #endif
 
     /* Owned by thread.c. */
+    int64_t wakeup_tick;                /**< Tick count when the thread should wake up. */
     unsigned magic;                     /**< Detects stack overflow. */
   };
 
