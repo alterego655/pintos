@@ -25,6 +25,7 @@ static int64_t ticks;
 static unsigned loops_per_tick;
 
 static struct list sleep_list;
+static struct lock sleep_list_lock;
 
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
@@ -55,6 +56,7 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init(&sleep_list);
+  lock_init(&sleep_list_lock);
 }
 
 /** Calibrates loops_per_tick, used to implement brief delays. */
@@ -112,10 +114,11 @@ timer_sleep (int64_t ticks)
 
   cur->wait_ticks = start + ticks;
   
-  enum intr_level old_level = intr_disable ();
-
+  lock_acquire(&sleep_list_lock);
   list_insert_ordered(&sleep_list, &cur->elem, compare_tick_priority, NULL);
+  lock_release(&sleep_list_lock);
   
+  enum intr_level old_level = intr_disable();
   thread_block();
   intr_set_level(old_level);
 }
