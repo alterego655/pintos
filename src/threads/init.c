@@ -118,7 +118,12 @@ pintos_init (void)
 
   /* Start thread scheduler and enable interrupts. */
   thread_start ();
+  
+  printf("serial_init\n");
   serial_init_queue ();
+
+  printf("timer_calibrate\n");
+
   timer_calibrate ();
 
 #ifdef FILESYS

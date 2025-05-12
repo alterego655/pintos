@@ -109,16 +109,17 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
+  // printf("timer_sleep\n");
   int64_t start = timer_ticks ();
   struct thread *cur = thread_current();
 
   cur->wait_ticks = start + ticks;
   
-  lock_acquire(&sleep_list_lock);
-  list_insert_ordered(&sleep_list, &cur->elem, compare_tick_priority, NULL);
-  lock_release(&sleep_list_lock);
-  
   enum intr_level old_level = intr_disable();
+  // lock_acquire(&sleep_list_lock);
+  list_insert_ordered(&sleep_list, &cur->elem, compare_tick_priority, NULL);
+  // lock_release(&sleep_list_lock);
+  
   thread_block();
   intr_set_level(old_level);
 }
@@ -198,6 +199,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  //printf("Timer interrupt\n");
   
   struct list wakeup_list;
   list_init(&wakeup_list);
