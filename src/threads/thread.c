@@ -157,7 +157,7 @@ ready_queue_remove_highest(void)
       
       /* Find new highest priority */
       int new_highest = PRI_MIN - 1;
-      for (int i = highest_ready_priority - 1; i >= PRI_MIN; i--) {
+      for (int i = PRI_MAX; i >= PRI_MIN; i--) {
         if (!list_empty(&ready_queues[i])) {
           new_highest = i;
           break;
@@ -285,8 +285,8 @@ void update_cpu_usage(void) {
   fp_t term1 = MUL_FP_FP(coef_59_60, load_avg);
   fp_t term2 = MUL_FP_INT(coef_1_60, ready_threads);
   load_avg = ADD_FP_FP(term1, term2);
- // printf("load_avg: %d\n", FP_TO_INT_TRUNC(load_avg));
- // printf("ready_threads: %d\n", ready_threads);
+  printf("load_avg: %d\n", FP_TO_INT_TRUNC(load_avg));
+  printf("ready_threads: %d\n", ready_threads);
 
   // Update recent_cpu for all threads
   thread_foreach(recalculate_recent_cpu, NULL);
@@ -659,8 +659,8 @@ check_yield(void)
       intr_yield_on_return();
     } else {
       thread_yield();
-    }
-    return;
+      return;
+    } 
   }
   
   intr_set_level(old_level);
@@ -673,7 +673,8 @@ thread_set_priority (int new_priority)
   if (thread_mlfqs) {
     return;
   }
- enum intr_level old_level = intr_disable();
+
+  enum intr_level old_level = intr_disable();
   struct thread *current = thread_current();
   int old_priority = current->priority;
   
@@ -692,6 +693,7 @@ thread_set_priority (int new_priority)
   if (current->priority < old_priority) {
     check_yield();
   }
+
   intr_set_level(old_level);
 }
 
