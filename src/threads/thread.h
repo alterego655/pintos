@@ -4,7 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-#include <fixed_point.h>
+#include "fix-point.h"
 
 /** States in a thread's life cycle. */
 enum thread_status {
@@ -88,6 +88,7 @@ struct thread {
   uint8_t *stack;            /**< Saved stack pointer. */
   int priority;              /**< Priority. */
   int base_priority;
+  int old_priority;
   struct list_elem allelem;  /**< List element for all threads list. */
 
   /* Shared between thread.c and synch.c. */
@@ -111,7 +112,7 @@ struct thread {
 
   int nice;                       /* Niceness between -20 and 20 */
   
-  fixed_point_t recent_cpu;       /* Recent CPU usage (fixed-point) */
+  fp_t recent_cpu;       /* Recent CPU usage (fixed-point) */
 };
 
 /** If false (default), use round-robin scheduler.
@@ -127,6 +128,15 @@ void thread_print_stats(void);
 
 bool thread_priority_compare(const struct list_elem *a, const struct list_elem *b, void *aux);
 
+void update_cpu_usage(void);
+void update_priority(void);
+void update_recent_cpu(void);
+
+void thread_priority_changed(struct thread *t);
+
+void recalculate_priority(struct thread *t, void *aux UNUSED);
+void recalculate_recent_cpu(struct thread *t, void *aux UNUSED);
+
 typedef void thread_func(void *aux);
 tid_t thread_create(const char *name, int priority, thread_func *, void *);
 
@@ -139,6 +149,8 @@ const char *thread_name(void);
 
 void thread_exit(void) NO_RETURN;
 void thread_yield(void);
+
+void check_yield(void);
 
 /** Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func(struct thread *t, void *aux);

@@ -94,13 +94,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      
-      if (thread_mlfqs) {
-        list_push_back(&sema->waiters, &thread_current ()->elem);
-      } else {
-        list_insert_ordered(&sema->waiters, &thread_current ()->elem, thread_priority_compare, NULL);
-      }
-      
+      list_insert_ordered(&sema->waiters, &thread_current ()->elem, thread_priority_compare, NULL);
       thread_block ();
     }
   sema->value--;
@@ -293,19 +287,21 @@ lock_acquire (struct lock *lock)
   struct thread *holder = lock->holder;
 
   current->waiting_lock = lock;
-
-  if (holder != NULL) {
-    // If current thread has higher priority than holder, donate priority
-    // printf("current thread_name, priority in acquire: %s, %d\n", current->name, current->priority);
-    // printf("holder thread_name, priority in acquire: %s, %d\n", holder->name, holder->priority);
-    if (current->priority > holder->priority) {
-      // Donate priority to holder
-      nested_donation_depth = 0;  // Initialize donation depth counter
-      donate_priority(holder, current->priority);
-      // printf("Yield to other process to run in acquire.\n");
+  
+  if (!thread_mlfqs) {
+    if (holder != NULL) {
+      // If current thread has higher priority than holder, donate priority
       // printf("current thread_name, priority in acquire: %s, %d\n", current->name, current->priority);
       // printf("holder thread_name, priority in acquire: %s, %d\n", holder->name, holder->priority);
-      thread_yield();
+      if (current->priority > holder->priority) {
+        // Donate priority to holder
+        nested_donation_depth = 0;  // Initialize donation depth counter
+        donate_priority(holder, current->priority);
+        // printf("Yield to other process to run in acquire.\n");
+        // printf("current thread_name, priority in acquire: %s, %d\n", current->name, current->priority);
+        // printf("holder thread_name, priority in acquire: %s, %d\n", holder->name, holder->priority);
+        thread_yield();
+      }
     }
   }
   
@@ -355,26 +351,31 @@ lock_release(struct lock *lock) {
   list_remove(&lock->elem);
   
   struct thread *current = thread_current();
-
-    // Get old priority before reset
-  int old_priority = current->priority;
   
-  if (current->is_donating) {
-    // printf("resetting priority in release\n");
-    // printf("current thread_name, priority in release: %s, %d\n", current->name, current->priority);
-    // printf("holder thread_name, priority in release: %s, %d\n", lock->holder->name, lock->holder->priority);
-    reset_priority(current);
+  int old_priority = current->priority;
+  if (!thread_mlfqs) {
+    // Get old priority before reset
+
+    
+    if (current->is_donating) {
+      // printf("resetting priority in release\n");
+      // printf("current thread_name, priority in release: %s, %d\n", current->name, current->priority);
+      // printf("holder thread_name, priority in release: %s, %d\n", lock->holder->name, lock->holder->priority);
+      reset_priority(current);
+    }
   }
   
   lock->holder = NULL;
   sema_up(&lock->semaphore);
 
+  if (!thread_mlfqs) {
       // If our priority decreased, yield to let higher priority threads run
-  if (!intr_context() && current->priority < old_priority) {
-    // printf("Yield to other process to run in release.\n");
-    // printf("current thread_name, priority in release: %s, %d\n", current->name, current->priority);
-    thread_yield();
-  } 
+    if (!intr_context() && current->priority < old_priority) {
+      // printf("Yield to other process to run in release.\n");
+      // printf("current thread_name, priority in release: %s, %d\n", current->name, current->priority);
+      thread_yield();
+    } 
+  }
   // printf("thread %s, priority %d has released the lock successfully", current->name, current->priority);
 }
 
@@ -433,12 +434,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   sema_init (&waiter.semaphore, 0);
   waiter.priority = thread_get_priority();
 
-  if (thread_mlfqs) {
-    list_push_back (&cond->waiters, &waiter.elem);
-  } else {
-    list_insert_ordered(&cond->waiters, &waiter.elem, semaphore_priority_compare, NULL);
-  }
-  
+  list_insert_ordered(&cond->waiters, &waiter.elem, semaphore_priority_compare, NULL);
+
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);

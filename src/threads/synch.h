@@ -21,7 +21,7 @@ void sema_up (struct semaphore *);
 void sema_self_test (void);
 void donate_priority(struct thread *t, int priority);
 void reset_priority(struct thread *t);
-void update_ready_list(void);
+// void update_ready_list(void);
 
 /** Lock. */
 struct lock 

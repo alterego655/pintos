@@ -193,7 +193,7 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /** Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
@@ -204,9 +204,27 @@ timer_interrupt (struct intr_frame *args UNUSED)
   struct list wakeup_list;
   list_init(&wakeup_list);
 
+  // MLFQS scheduler update logic
+  if (thread_mlfqs) {
+    struct thread *current = thread_current();
+    
+    update_recent_cpu();
+    // Every second (when ticks % TIMER_FREQ == 0)
+    if (ticks % TIMER_FREQ == 0) {
+        // 1. Calculate cpu usage
+      update_cpu_usage();
+    }
+    
+    // Every 4 ticks
+    if (ticks % 4 == 0) {
+      // 2. Update priority
+      update_priority();
+    }
+  }
   
+  // Existing wake-up logic
   enum intr_level old_level = intr_disable();
- /* Safely iterate through sleep_list */
+  /* Safely iterate through sleep_list */
   struct list_elem *e = list_begin(&sleep_list);
   while (e != list_end(&sleep_list)) 
   {
@@ -244,6 +262,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   }
   intr_set_level(old_level);
 }
+
 
 /** Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
