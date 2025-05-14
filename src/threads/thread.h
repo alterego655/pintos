@@ -88,7 +88,6 @@ struct thread {
   uint8_t *stack;            /**< Saved stack pointer. */
   int priority;              /**< Priority. */
   int base_priority;
-  int old_priority;
   struct list_elem allelem;  /**< List element for all threads list. */
 
   /* Shared between thread.c and synch.c. */
@@ -131,8 +130,6 @@ bool thread_priority_compare(const struct list_elem *a, const struct list_elem *
 void update_cpu_usage(void);
 void update_priority(void);
 void update_recent_cpu(void);
-
-void thread_priority_changed(struct thread *t);
 
 void recalculate_priority(struct thread *t, void *aux UNUSED);
 void recalculate_recent_cpu(struct thread *t, void *aux UNUSED);
