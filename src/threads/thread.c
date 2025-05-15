@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"  /* Include for timer_ticks() */
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -267,12 +268,30 @@ void update_cpu_usage(void) {
   
   // Count ready threads directly from all threads list
   int ready_threads = 0;
+  int running_count = 0;
+  int ready_count = 0;
+  int blocked_count = 0;
+  int dying_count = 0;
   struct list_elem *e;
   
   // Count threads with THREAD_READY status
   for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
     struct thread *t = list_entry(e, struct thread, allelem);
-    if (t != idle_thread && (t->status == THREAD_READY || t->status == THREAD_RUNNING)) {
+    
+    // Count by state
+    if (t != idle_thread) {
+      if (t->status == THREAD_RUNNING) {
+        running_count++;
+      } else if (t->status == THREAD_READY) {
+        ready_count++;
+      } else if (t->status == THREAD_BLOCKED) {
+        blocked_count++;
+      } else if (t->status == THREAD_DYING) {
+        dying_count++;
+      }
+    }
+    
+    if ((t->status == THREAD_READY || t->status == THREAD_RUNNING) && (t != idle_thread)) {
       ready_threads++;
     }
   }
@@ -285,8 +304,28 @@ void update_cpu_usage(void) {
   fp_t term1 = MUL_FP_FP(coef_59_60, load_avg);
   fp_t term2 = MUL_FP_INT(coef_1_60, ready_threads);
   load_avg = ADD_FP_FP(term1, term2);
+  
+  // Enhanced logging with thread state breakdown
   printf("load_avg: %d\n", FP_TO_INT_TRUNC(load_avg));
   printf("ready_threads: %d\n", ready_threads);
+  
+  // Only print detailed breakdown around the problematic time period (ticks between 45-55 seconds)
+  int64_t current_ticks = timer_ticks();
+    printf("DETAILED [%lld s]: running=%d, ready=%d, blocked=%d, dying=%d, total=%d\n", 
+           current_ticks / TIMER_FREQ,
+           running_count, ready_count, blocked_count, dying_count,
+           running_count + ready_count + blocked_count + dying_count);
+    
+    // Log first few thread states in all_list
+    int count = 0;
+    for (e = list_begin(&all_list); e != list_end(&all_list) && count < 5; e = list_next(e), count++) {
+      struct thread *t = list_entry(e, struct thread, allelem);
+      if (t != idle_thread) {
+        printf("Thread[%s]: status=%d, priority=%d, nice=%d\n", 
+               t->name, t->status, t->priority, t->nice);
+      }
+    }
+  
 
   // Update recent_cpu for all threads
   thread_foreach(recalculate_recent_cpu, NULL);

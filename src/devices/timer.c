@@ -213,6 +213,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if (ticks % TIMER_FREQ == 0) {
         // 1. Calculate cpu usage
       update_cpu_usage();
+      
+      // Critical debug logging for transition period (45-55 seconds)
+      if (ticks >= TIMER_FREQ * 45 && ticks <= TIMER_FREQ * 55) {
+        printf("TIMER_DEBUG [%lld s]: current_thread=%s, status=%d\n", 
+               ticks / TIMER_FREQ, 
+               current->name, 
+               current->status);
+      }
     }
     
     // Every 4 ticks
@@ -226,6 +234,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   enum intr_level old_level = intr_disable();
   /* Safely iterate through sleep_list */
   struct list_elem *e = list_begin(&sleep_list);
+  
   while (e != list_end(&sleep_list)) 
   {
     struct thread *t = list_entry(e, struct thread, elem);
@@ -240,7 +249,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       
       /* Add to wakeup_list (using the same elem) */
       list_insert_ordered(&wakeup_list, &t->elem, compare_priority_greater, NULL);
-      
+    
       /* Move to saved next element */
       e = next;
     } 
