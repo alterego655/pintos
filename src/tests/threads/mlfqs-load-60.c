@@ -152,18 +152,12 @@ load_thread (void *aux UNUSED)
   
   timer_sleep (sleep_time - timer_elapsed (start_time));
   
-  // Log start of spinning
-  current = timer_elapsed(start_time);
-  
-  // During spinning, add extra logs at critical times
   while (timer_elapsed (start_time) < spin_time) {
-    int64_t now = timer_elapsed(start_time);
-    
     continue;
   }
-  
-  // Log final sleep
-  current = timer_elapsed(start_time);
-  
+
+  uint64_t ticks = timer_ticks();
+
+
   timer_sleep (exit_time - timer_elapsed (start_time));
 }

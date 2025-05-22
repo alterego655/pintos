@@ -116,10 +116,8 @@ timer_sleep (int64_t ticks)
   cur->wait_ticks = start + ticks;
   
   enum intr_level old_level = intr_disable();
-  // lock_acquire(&sleep_list_lock);
   list_insert_ordered(&sleep_list, &cur->elem, compare_tick_priority, NULL);
-  // lock_release(&sleep_list_lock);
-  
+
   thread_block();
   intr_set_level(old_level);
 }
@@ -199,28 +197,17 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  //printf("Timer interrupt\n");
   
   struct list wakeup_list;
   list_init(&wakeup_list);
 
   // MLFQS scheduler update logic
-  if (thread_mlfqs) {
-    struct thread *current = thread_current();
-    
+  if (thread_mlfqs) {    
     update_recent_cpu();
     // Every second (when ticks % TIMER_FREQ == 0)
     if (ticks % TIMER_FREQ == 0) {
         // 1. Calculate cpu usage
       update_cpu_usage();
-      
-      // Critical debug logging for transition period (45-55 seconds)
-      if (ticks >= TIMER_FREQ * 45 && ticks <= TIMER_FREQ * 55) {
-        printf("TIMER_DEBUG [%lld s]: current_thread=%s, status=%d\n", 
-               ticks / TIMER_FREQ, 
-               current->name, 
-               current->status);
-      }
     }
     
     // Every 4 ticks
